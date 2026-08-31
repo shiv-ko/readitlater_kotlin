@@ -1,0 +1,18 @@
+# Gradle
+.gradle/
+**/build/
+
+# Local Android SDK path
+local.properties
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+
+# Signing files must not be committed
+*.jks
+*.keystore
+
