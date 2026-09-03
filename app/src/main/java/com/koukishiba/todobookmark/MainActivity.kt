@@ -4,38 +4,61 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import com.koukishiba.todobookmark.auth.AuthState
+import com.koukishiba.todobookmark.ui.HomeViewModel
+import com.koukishiba.todobookmark.ui.SaveScreen
+import com.koukishiba.todobookmark.ui.SaveUiState
+import com.koukishiba.todobookmark.ui.SetupScreen
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    private var screenState by mutableStateOf(HomeScreenState())
+    private val viewModel: HomeViewModel by viewModels()
+    private var pendingUrls: List<String> = emptyList()
+    private var isShareIntent by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        screenState = intent.toScreenState()
+        handleIntent(intent)
 
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    TodoBookmarkScreen(screenState)
+                    val authState by viewModel.authState.collectAsStateWithLifecycle()
+                    val saveState by viewModel.saveState.collectAsStateWithLifecycle()
+
+                    LaunchedEffect(saveState) {
+                        if (isShareIntent && saveState == SaveUiState.LoginRequired) {
+                            delay(1500)
+                            finish()
+                        }
+                    }
+
+                    if (isShareIntent) {
+                        SaveScreen(
+                            state = saveState,
+                            onRetry = { startSaving() },
+                            onClose = { finish() },
+                            onReLogin = { viewModel.reLoginAndRetry(this@MainActivity, applicationContext, it) },
+                        )
+                    } else {
+                        SetupScreen(
+                            authState = authState,
+                            onSignIn = { viewModel.signIn(this@MainActivity) {} },
+                            onSignOut = { viewModel.signOut() },
+                        )
+                    }
                 }
             }
         }
@@ -44,104 +67,36 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        screenState = intent.toScreenState()
+        handleIntent(intent)
     }
 
-    private fun Intent.toScreenState(): HomeScreenState {
-        val isShareIntent = action == Intent.ACTION_SEND || action == Intent.ACTION_SEND_MULTIPLE
-        val urls = if (isShareIntent) {
-            ShareIntentParser.extractUrls(ShareIntentReader.readTexts(this))
-        } else {
-            emptyList()
+    private fun handleIntent(intent: Intent) {
+        isShareIntent = intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE
+        if (!isShareIntent) {
+            // ランチャーアイコンからの起動: SetupScreen は authState の更新を待たず、
+            // Flow が後から更新されれば再コンポーズされるため fire-and-forget で問題ない。
+            viewModel.refreshAuthState()
+            return
         }
-        return HomeScreenState(isShareIntent = isShareIntent, urls = urls)
+
+        pendingUrls = ShareIntentParser.extractUrls(ShareIntentReader.readTexts(intent))
+        startSavingWithAuthCheck()
     }
-}
 
-data class HomeScreenState(
-    val isShareIntent: Boolean = false,
-    val urls: List<String> = emptyList(),
-)
-
-@androidx.compose.runtime.Composable
-private fun TodoBookmarkScreen(state: HomeScreenState) {
-    Scaffold { innerPadding ->
-        if (state.isShareIntent) {
-            SharedLinksContent(
-                urls = state.urls,
-                modifier = Modifier.padding(innerPadding),
-            )
-        } else {
-            SetupContent(modifier = Modifier.padding(innerPadding))
-        }
-    }
-}
-
-@androidx.compose.runtime.Composable
-private fun SetupContent(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-        )
-        Text(stringResource(R.string.setup_complete))
-        Text(
-            text = stringResource(R.string.setup_next),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@androidx.compose.runtime.Composable
-private fun SharedLinksContent(
-    urls: List<String>,
-    modifier: Modifier = Modifier,
-) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-
-        item {
-            Text(
-                text = if (urls.isEmpty()) {
-                    stringResource(R.string.no_links)
-                } else {
-                    stringResource(R.string.detected_links, urls.size)
-                },
-                style = MaterialTheme.typography.titleMedium,
-            )
-        }
-
-        if (urls.isNotEmpty()) {
-            items(urls) { url ->
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(text = url, style = MaterialTheme.typography.bodyMedium)
-                    HorizontalDivider(modifier = Modifier.padding(top = 12.dp))
-                }
+    private fun startSavingWithAuthCheck() {
+        // シェアIntentのコールドスタートでは authState の StateFlow がまだ既定値
+        // (SignedOut) のままの可能性があるため、判定前に必ず最新状態を取得し直す。
+        lifecycleScope.launch {
+            val state = viewModel.ensureFreshAuthState()
+            if (state is AuthState.SignedIn) {
+                startSaving()
+            } else {
+                viewModel.signIn(this@MainActivity) { startSaving() }
             }
         }
+    }
 
-        item {
-            Text(
-                text = stringResource(R.string.save_not_implemented),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+    private fun startSaving() {
+        viewModel.save(applicationContext, pendingUrls)
     }
 }
-

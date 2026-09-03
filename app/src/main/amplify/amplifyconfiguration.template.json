@@ -1,0 +1,33 @@
+{
+  "UserAgent": "aws-amplify-cli/2.0",
+  "Version": "1.0",
+  "auth": {
+    "plugins": {
+      "awsCognitoAuthPlugin": {
+        "UserAgent": "aws-amplify-cli/0.1.0",
+        "Version": "0.1.0",
+        "IdentityManager": {
+          "Default": {}
+        },
+        "CognitoUserPool": {
+          "Default": {
+            "PoolId": "__USER_POOL_ID__",
+            "AppClientId": "__USER_POOL_CLIENT_ID__",
+            "Region": "__AWS_REGION__"
+          }
+        },
+        "Auth": {
+          "Default": {
+            "OAuth": {
+              "WebDomain": "__HOSTED_UI_DOMAIN__",
+              "AppClientId": "__USER_POOL_CLIENT_ID__",
+              "SignInRedirectURI": "todobookmark://callback",
+              "SignOutRedirectURI": "todobookmark://signout",
+              "Scopes": ["openid", "email", "profile"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

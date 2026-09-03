@@ -287,8 +287,10 @@ POST /bookmarks/batch
 ### Authorization
 
 ```http
-Authorization: Bearer {Cognito ID Token}
+Authorization: {Cognito ID Token}
 ```
+
+ID TokenのJWT文字列をそのまま設定する。`Bearer `は付けない（バックエンドのCognito User Pools Authorizerの仕様による）。
 
 未ログイン、またはトークン失効かつリフレッシュ失敗の場合は9節のログイン画面へ遷移する。
 
@@ -301,9 +303,12 @@ Authorization: Bearer {Cognito ID Token}
     { "url": "https://github.com" },
     { "url": "https://example.com/article" }
   ],
-  "status": "inbox"
+  "status": "inbox",
+  "source": "android"
 }
 ```
+
+`source`は`"android"`固定で送る（省略時のバックエンド既定値も`android`だが、入力値を明確にするため明示的に送る）。
 
 タグ・メモは付与しない（MVPではWeb版で後から追加する運用）。タイトル・description・OG画像はバックエンドの非同期メタデータ取得処理に任せる。
 
@@ -364,7 +369,15 @@ MainActivity
 
 ## 10. オフライン対応
 
-通信失敗時（オフライン、タイムアウトなど）は、送信予定だったURLリストをWorkManagerへ登録し、ネットワーク復旧後に自動で再送する。
+APIレスポンスに応じて、再送するかどうかを分岐する。
+
+| 状況 | 処理 |
+|---|---|
+| 200（一部`invalid`含む） | 再送しない。結果を集計して表示する |
+| 400 | 再送しない。リクエスト形式の誤りのため、入力を見直せる表示にする |
+| 401 / 403 | トークン更新を1回試す。失敗したら再ログイン画面へ遷移する |
+| 5xx | WorkManagerへ登録し、指数バックオフで再送する |
+| タイムアウト・オフライン | WorkManagerへ登録し、ネットワーク復旧後に再送する |
 
 再送によってBookmarkが重複しないよう、重複判定はバックエンド側のURL正規化に委ねる（6節参照）。そのため同じ共有操作が再送されても安全である。
 

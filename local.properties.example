@@ -1,0 +1,9 @@
+# local.properties は .gitignore 済み。このファイルをコピーして local.properties を作成し、
+# バックエンドデプロイ後の CloudFormation 出力値を設定すること（docs/backend-requirements.md 参照）。
+sdk.dir=/path/to/Android/sdk
+
+TODOBOOKMARK_API_BASE_URL=https://gctpao66n5.execute-api.ap-northeast-3.amazonaws.com/prod
+TODOBOOKMARK_AWS_REGION=ap-northeast-3
+TODOBOOKMARK_USER_POOL_ID=ap-northeast-3_H9F0jf3UU
+TODOBOOKMARK_USER_POOL_CLIENT_ID=CHANGEME
+TODOBOOKMARK_HOSTED_UI_DOMAIN=CHANGEME.auth.ap-northeast-3.amazoncognito.com
