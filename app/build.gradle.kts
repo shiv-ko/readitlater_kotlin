@@ -124,8 +124,17 @@ dependencies {
     implementation(libs.amplify.aws.auth.cognito)
 
     testImplementation(libs.junit)
+    testImplementation(libs.squareup.okhttp)
     testImplementation(libs.squareup.okhttp.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+// Force OkHttp 4.12.0 across all configurations to avoid compatibility issues with MockWebServer
+configurations.all {
+    resolutionStrategy {
+        force("com.squareup.okhttp3:okhttp:4.12.0")
+        force("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    }
 }
