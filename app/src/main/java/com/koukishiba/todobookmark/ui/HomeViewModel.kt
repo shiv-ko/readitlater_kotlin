@@ -69,7 +69,11 @@ class HomeViewModel(
     }
 
     fun reLoginAndRetry(activity: Activity, context: Context, pendingUrls: List<String>) {
-        signIn(activity) { save(context, pendingUrls) }
+        viewModelScope.launch {
+            authManager.signOut()
+            _authState.value = AuthState.SignedOut
+            signIn(activity) { save(context, pendingUrls) }
+        }
     }
 
     fun signOut() {
