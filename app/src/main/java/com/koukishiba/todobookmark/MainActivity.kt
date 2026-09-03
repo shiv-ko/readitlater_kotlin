@@ -12,12 +12,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.koukishiba.todobookmark.auth.AuthState
 import com.koukishiba.todobookmark.ui.HomeViewModel
 import com.koukishiba.todobookmark.ui.SaveScreen
 import com.koukishiba.todobookmark.ui.SaveUiState
 import com.koukishiba.todobookmark.ui.SetupScreen
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val viewModel: HomeViewModel by viewModels()
@@ -26,7 +28,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel.refreshAuthState()
         handleIntent(intent)
 
         setContent {
@@ -68,17 +69,27 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent) {
         isShareIntent = intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE
-        if (!isShareIntent) return
+        if (!isShareIntent) {
+            // ランチャーアイコンからの起動: SetupScreen は authState の更新を待たず、
+            // Flow が後から更新されれば再コンポーズされるため fire-and-forget で問題ない。
+            viewModel.refreshAuthState()
+            return
+        }
 
         pendingUrls = ShareIntentParser.extractUrls(ShareIntentReader.readTexts(intent))
         startSavingWithAuthCheck()
     }
 
     private fun startSavingWithAuthCheck() {
-        if (viewModel.authState.value is AuthState.SignedIn) {
-            startSaving()
-        } else {
-            viewModel.signIn(this) { startSaving() }
+        // シェアIntentのコールドスタートでは authState の StateFlow がまだ既定値
+        // (SignedOut) のままの可能性があるため、判定前に必ず最新状態を取得し直す。
+        lifecycleScope.launch {
+            val state = viewModel.ensureFreshAuthState()
+            if (state is AuthState.SignedIn) {
+                startSaving()
+            } else {
+                viewModel.signIn(this@MainActivity) { startSaving() }
+            }
         }
     }
 

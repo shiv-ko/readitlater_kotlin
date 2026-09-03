@@ -40,8 +40,19 @@ class HomeViewModel(
 
     fun refreshAuthState() {
         viewModelScope.launch {
-            _authState.value = authManager.currentState()
+            ensureFreshAuthState()
         }
+    }
+
+    /**
+     * AuthManager から最新の認証状態を取得し、`authState` にも反映してから返す。
+     * シェアIntentのコールドスタート時のように、キャッシュ済みの StateFlow の値では
+     * 古い状態（既定の SignedOut）を読んでしまう場面で、結果を待ってから判定するために使う。
+     */
+    suspend fun ensureFreshAuthState(): AuthState {
+        val state = authManager.currentState()
+        _authState.value = state
+        return state
     }
 
     fun signIn(activity: Activity, onSignedIn: () -> Unit) {
