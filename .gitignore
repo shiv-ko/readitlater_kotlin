@@ -5,6 +5,9 @@
 # Local Android SDK path
 local.properties
 
+# Generated from local.properties at build time; never commit real Cognito values
+app/src/main/res/raw/amplifyconfiguration.json
+
 # Android Studio / IntelliJ IDEA
 .idea/
 *.iml
