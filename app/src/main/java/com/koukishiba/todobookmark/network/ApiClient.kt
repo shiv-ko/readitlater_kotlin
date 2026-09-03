@@ -1,5 +1,6 @@
 package com.koukishiba.todobookmark.network
 
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.koukishiba.todobookmark.BuildConfig
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -33,22 +34,11 @@ object ApiClient {
             .build()
 
         val mediaType = "application/json".toMediaType()
-        val converterFactory = try {
-            // Try to load the jakewharton converter factory using reflection
-            val clazz = Class.forName("com.jakewharton.retrofit2.kotlinx.serialization.KotlinSerializationConverterFactory")
-            val method = clazz.getMethod("create", Json::class.java, okhttp3.MediaType::class.java)
-            method.invoke(null, json, mediaType) as retrofit2.Converter.Factory
-        } catch (e: Exception) {
-            // Fallback: create with just the Json object
-            val clazz = Class.forName("com.jakewharton.retrofit2.kotlinx.serialization.KotlinSerializationConverterFactory")
-            val constructor = clazz.getConstructor(Json::class.java)
-            constructor.newInstance(json) as retrofit2.Converter.Factory
-        }
 
         val retrofit = Retrofit.Builder()
             .baseUrl("${BuildConfig.API_BASE_URL}/")
             .client(okHttpClient)
-            .addConverterFactory(converterFactory)
+            .addConverterFactory(json.asConverterFactory(mediaType))
             .build()
 
         return retrofit.create(BookmarkApi::class.java)
