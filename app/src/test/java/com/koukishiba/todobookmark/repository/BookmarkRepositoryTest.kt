@@ -7,6 +7,7 @@ import com.koukishiba.todobookmark.network.BatchResultItem
 import com.koukishiba.todobookmark.network.BatchResultStatus
 import com.koukishiba.todobookmark.network.BookmarkApi
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -110,5 +111,17 @@ class BookmarkRepositoryTest {
         repository.save(urls) { progressUpdates += it }
 
         assertEquals(listOf(SaveProgress(20, 25), SaveProgress(25, 25)), progressUpdates)
+    }
+
+    @Test
+    fun `不正なレスポンスボディによるSerializationExceptionはRetryableとして扱う`() = runTest {
+        val api = FakeBookmarkApi { throw SerializationException("malformed response body") }
+        val repository = BookmarkRepository(api)
+        val urls = listOf("https://example.com/a")
+
+        val result = repository.save(urls)
+
+        assertEquals(SaveOutcome.Retryable, result.outcome)
+        assertEquals(urls, result.pendingUrls)
     }
 }

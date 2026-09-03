@@ -6,7 +6,7 @@ import com.koukishiba.todobookmark.batch.toSaveSummary
 import com.koukishiba.todobookmark.network.BatchRequestBody
 import com.koukishiba.todobookmark.network.BatchRequestItem
 import com.koukishiba.todobookmark.network.BookmarkApi
-import java.io.IOException
+import kotlinx.coroutines.CancellationException
 
 data class SaveProgress(val processed: Int, val total: Int)
 
@@ -59,7 +59,9 @@ class BookmarkRepository(private val api: BookmarkApi) {
             val response = api.postBatch(body)
             val summary = response.body()?.results?.toSaveSummary()
             classifyResponse(response.code(), summary, chunk.size)
-        } catch (error: IOException) {
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
             classifyNetworkFailure()
         }
     }
