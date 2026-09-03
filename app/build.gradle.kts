@@ -136,8 +136,12 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
-// Force OkHttp 4.12.0 across all configurations to avoid compatibility issues with MockWebServer
-configurations.all {
+// Force OkHttp 4.12.0 only for test configurations, to match MockWebServer's version.
+// Do NOT apply this to the app's own runtime classpath: Amplify's AWS SDK dependencies
+// pull in a newer OkHttp (5.0.0-alpha.14) whose Request.Builder API they actually call at
+// runtime (e.g. tag(KClass, Any?)). Forcing the whole app down to 4.12.0 previously caused
+// a NoSuchMethodError crash on real devices right after Cognito sign-in.
+configurations.matching { it.name.contains("test", ignoreCase = true) }.configureEach {
     resolutionStrategy {
         force("com.squareup.okhttp3:okhttp:4.12.0")
         force("com.squareup.okhttp3:logging-interceptor:4.12.0")
