@@ -79,18 +79,23 @@ android {
 val generateAmplifyConfig by tasks.registering {
     val templateFile = file("src/main/amplify/amplifyconfiguration.template.json")
     val outputFile = file("src/main/res/raw/amplifyconfiguration.json")
+    val userPoolId = localProperty("TODOBOOKMARK_USER_POOL_ID", "ap-northeast-3_H9F0jf3UU")
+    val userPoolClientId = localProperty("TODOBOOKMARK_USER_POOL_CLIENT_ID", "CHANGEME")
+    val awsRegion = localProperty("TODOBOOKMARK_AWS_REGION", "ap-northeast-3")
+    val hostedUiDomain = localProperty("TODOBOOKMARK_HOSTED_UI_DOMAIN", "CHANGEME.auth.ap-northeast-3.amazoncognito.com")
     inputs.file(templateFile)
+    inputs.property("userPoolId", userPoolId)
+    inputs.property("userPoolClientId", userPoolClientId)
+    inputs.property("awsRegion", awsRegion)
+    inputs.property("hostedUiDomain", hostedUiDomain)
     outputs.file(outputFile)
     doLast {
         outputFile.parentFile.mkdirs()
         val content = templateFile.readText()
-            .replace("__USER_POOL_ID__", localProperty("TODOBOOKMARK_USER_POOL_ID", "ap-northeast-3_H9F0jf3UU"))
-            .replace("__USER_POOL_CLIENT_ID__", localProperty("TODOBOOKMARK_USER_POOL_CLIENT_ID", "CHANGEME"))
-            .replace("__AWS_REGION__", localProperty("TODOBOOKMARK_AWS_REGION", "ap-northeast-3"))
-            .replace(
-                "__HOSTED_UI_DOMAIN__",
-                localProperty("TODOBOOKMARK_HOSTED_UI_DOMAIN", "CHANGEME.auth.ap-northeast-3.amazoncognito.com"),
-            )
+            .replace("__USER_POOL_ID__", userPoolId)
+            .replace("__USER_POOL_CLIENT_ID__", userPoolClientId)
+            .replace("__AWS_REGION__", awsRegion)
+            .replace("__HOSTED_UI_DOMAIN__", hostedUiDomain)
         outputFile.writeText(content)
     }
 }

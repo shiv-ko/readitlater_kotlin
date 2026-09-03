@@ -22,6 +22,7 @@ fun SaveScreen(
     state: SaveUiState,
     onRetry: () -> Unit,
     onClose: () -> Unit,
+    onReLogin: (List<String>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -62,11 +63,17 @@ fun SaveScreen(
                     Button(onClick = onClose) { Text(stringResource(R.string.close)) }
                 }
             }
-            SaveUiState.AuthRequired -> Text(stringResource(R.string.session_expired))
+            is SaveUiState.AuthRequired -> {
+                Text(stringResource(R.string.session_expired))
+                Button(onClick = { onReLogin(state.pendingUrls) }) { Text(stringResource(R.string.sign_in)) }
+            }
             SaveUiState.LoginRequired -> Text(stringResource(R.string.login_required))
             SaveUiState.NetworkQueued -> {
-                Text(stringResource(R.string.connection_failed))
-                Button(onClick = onClose) { Text(stringResource(R.string.close)) }
+                Text(stringResource(R.string.save_queued_for_retry))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+                    Button(onClick = onClose) { Text(stringResource(R.string.close)) }
+                }
             }
             SaveUiState.NoUrls -> Text(stringResource(R.string.no_links))
         }

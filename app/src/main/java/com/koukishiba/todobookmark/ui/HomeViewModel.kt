@@ -22,7 +22,7 @@ sealed interface SaveUiState {
     data class Saving(val processed: Int, val total: Int) : SaveUiState
     data class Success(val summary: SaveSummary) : SaveUiState
     data class PartialFailure(val summary: SaveSummary) : SaveUiState
-    data object AuthRequired : SaveUiState
+    data class AuthRequired(val pendingUrls: List<String>) : SaveUiState
     data object LoginRequired : SaveUiState
     data object NetworkQueued : SaveUiState
     data object NoUrls : SaveUiState
@@ -68,6 +68,10 @@ class HomeViewModel(
         }
     }
 
+    fun reLoginAndRetry(activity: Activity, context: Context, pendingUrls: List<String>) {
+        signIn(activity) { save(context, pendingUrls) }
+    }
+
     fun signOut() {
         viewModelScope.launch {
             authManager.signOut()
@@ -94,7 +98,7 @@ class HomeViewModel(
                         SaveUiState.Success(outcome.summary)
                     }
                 is SaveOutcome.ClientError -> SaveUiState.PartialFailure(outcome.summary)
-                SaveOutcome.AuthExpired -> SaveUiState.AuthRequired
+                SaveOutcome.AuthExpired -> SaveUiState.AuthRequired(result.pendingUrls)
                 SaveOutcome.Retryable -> {
                     WorkScheduler.enqueueRetry(context, result.pendingUrls, "inbox")
                     SaveUiState.NetworkQueued

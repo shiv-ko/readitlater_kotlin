@@ -10,6 +10,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -24,7 +26,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val viewModel: HomeViewModel by viewModels()
     private var pendingUrls: List<String> = emptyList()
-    private var isShareIntent: Boolean = false
+    private var isShareIntent by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +39,7 @@ class MainActivity : ComponentActivity() {
                     val saveState by viewModel.saveState.collectAsStateWithLifecycle()
 
                     LaunchedEffect(saveState) {
-                        if (saveState == SaveUiState.LoginRequired) {
+                        if (isShareIntent && saveState == SaveUiState.LoginRequired) {
                             delay(1500)
                             finish()
                         }
@@ -48,6 +50,7 @@ class MainActivity : ComponentActivity() {
                             state = saveState,
                             onRetry = { startSaving() },
                             onClose = { finish() },
+                            onReLogin = { viewModel.reLoginAndRetry(this@MainActivity, applicationContext, it) },
                         )
                     } else {
                         SetupScreen(

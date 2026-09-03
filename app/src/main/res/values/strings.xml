@@ -26,4 +26,5 @@
     <string name="login_required">ログインしてください</string>
     <string name="session_expired">ログインの有効期限が切れました</string>
     <string name="connection_failed">サーバーへの接続に失敗しました</string>
+    <string name="save_queued_for_retry">サーバーへの接続に失敗しました。復旧後に自動的に再送します。</string>
 </resources>
